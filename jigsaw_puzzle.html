@@ -3,34 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>圖片拼圖遊戲 (2塊版)</title>
+    <title>圖片拼圖遊戲 (穩定版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
+            background-color: #000; /* 背景黑色 */
         }
         .puzzle-piece {
-            /* 改為 200% 闊, 100% 高，以對應 1x2 嘅拼圖切割 */
-            background-size: 200% 100%;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .puzzle-piece:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(255, 255, 100, 0.8);
-            z-index: 10;
+            background-size: 200% 100%; /* 因為是 1x2，闊度放兩倍 */
+            transition: transform 0.2s ease;
         }
         .puzzle-slot {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 2px dashed #666;
-        }
-        .puzzle-slot.filled {
-            border: none;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px dashed #444;
+            box-sizing: border-box;
         }
     </style>
 </head>
-<body class="bg-black text-white">
+<body class="text-white">
 
     <div id="root"></div>
     
@@ -52,12 +45,12 @@
 
         const SelectionScreen = ({ onSelect }) => (
             <div className="p-8 text-center">
-                <h1 className="text-4xl font-bold mb-8">請選擇要玩的拼圖</h1>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <h1 className="text-3xl font-bold mb-8">請選擇拼圖</h1>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {IMAGE_LIST.map(image => (
-                        <div key={image.id} onClick={() => onSelect(image)} className="cursor-pointer border-4 border-transparent hover:border-yellow-400 transition-all duration-300 rounded-lg overflow-hidden">
-                            <img src={image.src} alt={image.name} className="w-full h-48 object-cover"/>
-                            <p className="bg-gray-800 py-2 text-lg">{image.name}</p>
+                        <div key={image.id} onClick={() => onSelect(image)} className="cursor-pointer border-2 border-gray-700 hover:border-yellow-500 rounded-lg overflow-hidden bg-gray-900">
+                            <img src={image.src} alt={image.name} className="w-full h-32 object-cover"/>
+                            <p className="py-2 text-sm">{image.name}</p>
                         </div>
                     ))}
                 </div>
@@ -65,128 +58,103 @@
         );
 
         const GameScreen = ({ image, onBack }) => {
-            // --- 修改：定義行和列，以產生 1x2 = 2塊拼圖 ---
-            const PUZZLE_ROWS = 1;
-            const PUZZLE_COLS = 2;
             const PIECE_SIZE = 150;
-            const BOARD_WIDTH = PIECE_SIZE * PUZZLE_COLS;
-            const BOARD_HEIGHT = PIECE_SIZE * PUZZLE_ROWS;
-
+            // 固定為 1x2 佈局
             const [shuffledPieces, setShuffledPieces] = useState([]);
             const [placedPieces, setPlacedPieces] = useState({});
             const draggedPieceRef = useRef(null);
 
-            // 產生並打亂拼圖碎片
             useEffect(() => {
-                const pieces = [];
-                const totalPieces = PUZZLE_ROWS * PUZZLE_COLS;
-                for (let i = 0; i < totalPieces; i++) {
-                    const row = Math.floor(i / PUZZLE_COLS);
-                    const col = i % PUZZLE_COLS;
-                    
-                    // 處理 backgroundPosition，避免除以零
-                    const xPos = PUZZLE_COLS > 1 ? (100 / (PUZZLE_COLS - 1)) * col : 0;
-                    const yPos = PUZZLE_ROWS > 1 ? (100 / (PUZZLE_ROWS - 1)) * row : 0;
-
-                    pieces.push({
-                        id: i,
-                        style: {
-                            backgroundImage: `url(${image.src})`,
-                            backgroundPosition: `${xPos}% ${yPos}%`,
-                        }
-                    });
-                }
+                const pieces = [
+                    { id: 0, pos: '0% 0%' },
+                    { id: 1, pos: '100% 0%' }
+                ].map(p => ({
+                    id: p.id,
+                    style: {
+                        backgroundImage: `url(${image.src})`,
+                        backgroundPosition: p.pos,
+                        width: PIECE_SIZE + 'px',
+                        height: PIECE_SIZE + 'px'
+                    }
+                }));
                 setShuffledPieces(pieces.sort(() => Math.random() - 0.5));
                 setPlacedPieces({});
             }, [image]);
 
-            // --- 已移除：檢查完成嘅 useEffect ---
-
-            const handleDragStart = (piece) => {
-                draggedPieceRef.current = piece;
-            };
-
-            const handleDragOver = (e) => {
-                e.preventDefault();
-            };
-
             const handleDrop = (slotId) => {
-                if (draggedPieceRef.current && draggedPieceRef.current.id === slotId) {
-                    setPlacedPieces(prev => ({ ...prev, [slotId]: draggedPieceRef.current }));
-                    setShuffledPieces(prev => prev.filter(p => p.id !== draggedPieceRef.current.id));
-                    draggedPieceRef.current = null;
+                const piece = draggedPieceRef.current;
+                if (piece && piece.id === slotId) {
+                    // 只有位置正確才更新
+                    setPlacedPieces(prev => ({ ...prev, [slotId]: piece }));
+                    setShuffledPieces(prev => prev.filter(p => p.id !== piece.id));
                 }
+                draggedPieceRef.current = null;
             };
 
             return (
-                <div className="w-full min-h-screen flex flex-col items-center justify-center p-4">
-                    <h2 className="text-3xl font-bold mb-4">拼砌: {image.name}</h2>
-                    <div className="flex flex-col md:flex-row items-center gap-8">
-                        {/* 左側：未放置的碎片 */}
-                        <div className="bg-gray-900 p-4 rounded-lg w-full md:w-auto">
-                            <h3 className="text-xl mb-4 text-center">待拼碎片</h3>
-                            <div className="grid grid-cols-2 gap-2" style={{ minHeight: PIECE_SIZE + 8 }}>
+                <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                    <h2 className="text-2xl mb-6">拼砌中: {image.name}</h2>
+                    
+                    <div className="flex flex-col gap-10 items-center">
+                        {/* 待拼區 */}
+                        <div className="bg-gray-800 p-4 rounded-xl border border-gray-600">
+                            <p className="text-sm text-gray-400 mb-2 text-center">拖拽碎片到右邊</p>
+                            <div className="flex gap-4 justify-center" style={{ minHeight: PIECE_SIZE }}>
                                 {shuffledPieces.map(piece => (
                                     <div
                                         key={piece.id}
                                         draggable
-                                        onDragStart={() => handleDragStart(piece)}
-                                        className="puzzle-piece cursor-grab"
-                                        style={{ ...piece.style, width: PIECE_SIZE, height: PIECE_SIZE }}
+                                        onDragStart={() => { draggedPieceRef.current = piece; }}
+                                        className="puzzle-piece cursor-grab border border-white/20"
+                                        style={piece.style}
                                     />
                                 ))}
                             </div>
                         </div>
 
-                        {/* 右側：拼圖板 */}
-                        <div className="relative" style={{ width: BOARD_WIDTH, height: BOARD_HEIGHT }}>
-                            <div className={`grid grid-cols-${PUZZLE_COLS}`}>
-                                {Array.from({ length: PUZZLE_ROWS * PUZZLE_COLS }).map((_, i) => (
-                                    <div
-                                        key={i}
-                                        onDragOver={handleDragOver}
-                                        onDrop={() => handleDrop(i)}
-                                        className={`puzzle-slot ${placedPieces[i] ? 'filled' : ''}`}
-                                        style={{ width: PIECE_SIZE, height: PIECE_SIZE }}
-                                    >
-                                        {placedPieces[i] && (
-                                            <div
-                                                className="puzzle-piece"
-                                                style={{ ...placedPieces[i].style, width: '100%', height: '100%' }}
-                                            />
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                            {/* --- 已移除：完成時嘅覆蓋層 --- */}
+                        {/* 拼圖板 - 使用標準 CSS Grid */}
+                        <div 
+                            style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: `repeat(2, ${PIECE_SIZE}px)`,
+                                gridTemplateRows: `${PIECE_SIZE}px`,
+                                gap: '2px',
+                                backgroundColor: '#222',
+                                padding: '2px',
+                                border: '2px solid #444'
+                            }}
+                        >
+                            {[0, 1].map(i => (
+                                <div
+                                    key={i}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={() => handleDrop(i)}
+                                    className="puzzle-slot flex items-center justify-center"
+                                    style={{ width: PIECE_SIZE, height: PIECE_SIZE }}
+                                >
+                                    {placedPieces[i] && (
+                                        <div className="puzzle-piece w-full h-full" style={placedPieces[i].style} />
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
-                    <button onClick={onBack} className="mt-8 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg text-xl">
-                        返回選擇
+
+                    <button onClick={onBack} className="mt-12 px-8 py-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
+                        返回
                     </button>
                 </div>
             );
         };
 
         const App = () => {
-            const [currentScreen, setCurrentScreen] = useState('select');
-            const [selectedImage, setSelectedImage] = useState(null);
+            const [view, setView] = useState('select');
+            const [selected, setSelected] = useState(null);
 
-            const handleImageSelect = (image) => {
-                setSelectedImage(image);
-                setCurrentScreen('game');
-            };
-
-            const handleBackToSelect = () => {
-                setCurrentScreen('select');
-                setSelectedImage(null);
-            };
-
-            if (currentScreen === 'game') {
-                return <GameScreen image={selectedImage} onBack={handleBackToSelect} />;
+            if (view === 'game' && selected) {
+                return <GameScreen image={selected} onBack={() => setView('select')} />;
             }
-            
-            return <SelectionScreen onSelect={handleImageSelect} />;
+            return <SelectionScreen onSelect={(img) => { setSelected(img); setView('game'); }} />;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
