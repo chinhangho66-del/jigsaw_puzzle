@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>圖片拼圖遊戲 (終極偵錯版)</title>
+    <title>圖片拼圖遊戲 (2塊版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -12,7 +12,8 @@
             -webkit-tap-highlight-color: transparent;
         }
         .puzzle-piece {
-            background-size: 200% 200%;
+            /* 改為 200% 闊, 100% 高，以對應 1x2 嘅拼圖切割 */
+            background-size: 200% 100%;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .puzzle-piece:hover {
@@ -40,8 +41,6 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        console.log("程式碼已載入，React準備就緒。");
-
         const IMAGE_LIST = [
             { id: 'disney', name: '迪士尼樂園', src: './ultimate-guide-to-hong-kong-disneyland-1920x1080.jpg' },
             { id: 'library', name: '中央圖書館', src: './c73f0f962b95ede35ff142a3ba93e629.jpg' },
@@ -51,67 +50,59 @@
             { id: 'mtr', name: '標誌', src: './下載.png' },
         ];
 
-        const SelectionScreen = ({ onSelect }) => {
-            console.log("正在渲染：選擇畫面 (SelectionScreen)");
-            return (
-                <div className="p-8 text-center">
-                    <h1 className="text-4xl font-bold mb-8">請選擇要玩的拼圖</h1>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                        {IMAGE_LIST.map(image => (
-                            <div key={image.id} onClick={() => { console.log('已選擇圖片:', image.name); onSelect(image); }} className="cursor-pointer border-4 border-transparent hover:border-yellow-400 transition-all duration-300 rounded-lg overflow-hidden">
-                                <img src={image.src} alt={image.name} className="w-full h-48 object-cover"/>
-                                <p className="bg-gray-800 py-2 text-lg">{image.name}</p>
-                            </div>
-                        ))}
-                    </div>
+        const SelectionScreen = ({ onSelect }) => (
+            <div className="p-8 text-center">
+                <h1 className="text-4xl font-bold mb-8">請選擇要玩的拼圖</h1>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    {IMAGE_LIST.map(image => (
+                        <div key={image.id} onClick={() => onSelect(image)} className="cursor-pointer border-4 border-transparent hover:border-yellow-400 transition-all duration-300 rounded-lg overflow-hidden">
+                            <img src={image.src} alt={image.name} className="w-full h-48 object-cover"/>
+                            <p className="bg-gray-800 py-2 text-lg">{image.name}</p>
+                        </div>
+                    ))}
                 </div>
-            );
-        };
+            </div>
+        );
 
         const GameScreen = ({ image, onBack }) => {
-            console.log("正在渲染：遊戲畫面 (GameScreen)");
-            const PUZZLE_DIMENSION = 2;
+            // --- 修改：定義行和列，以產生 1x2 = 2塊拼圖 ---
+            const PUZZLE_ROWS = 1;
+            const PUZZLE_COLS = 2;
             const PIECE_SIZE = 150;
-            const BOARD_SIZE = PIECE_SIZE * PUZZLE_DIMENSION;
+            const BOARD_WIDTH = PIECE_SIZE * PUZZLE_COLS;
+            const BOARD_HEIGHT = PIECE_SIZE * PUZZLE_ROWS;
 
             const [shuffledPieces, setShuffledPieces] = useState([]);
             const [placedPieces, setPlacedPieces] = useState({});
-            const [isComplete, setIsComplete] = useState(false);
             const draggedPieceRef = useRef(null);
 
+            // 產生並打亂拼圖碎片
             useEffect(() => {
-                console.log("--- useEffect 觸發：正在產生拼圖 ---");
                 const pieces = [];
-                for (let i = 0; i < PUZZLE_DIMENSION * PUZZLE_DIMENSION; i++) {
-                    const row = Math.floor(i / PUZZLE_DIMENSION);
-                    const col = i % PUZZLE_DIMENSION;
+                const totalPieces = PUZZLE_ROWS * PUZZLE_COLS;
+                for (let i = 0; i < totalPieces; i++) {
+                    const row = Math.floor(i / PUZZLE_COLS);
+                    const col = i % PUZZLE_COLS;
+                    
+                    // 處理 backgroundPosition，避免除以零
+                    const xPos = PUZZLE_COLS > 1 ? (100 / (PUZZLE_COLS - 1)) * col : 0;
+                    const yPos = PUZZLE_ROWS > 1 ? (100 / (PUZZLE_ROWS - 1)) * row : 0;
+
                     pieces.push({
                         id: i,
                         style: {
                             backgroundImage: `url(${image.src})`,
-                            backgroundPosition: `${(100 / (PUZZLE_DIMENSION - 1)) * col}% ${(100 / (PUZZLE_DIMENSION - 1)) * row}%`,
+                            backgroundPosition: `${xPos}% ${yPos}%`,
                         }
                     });
                 }
-                console.log("拼圖產生完畢，總共 " + pieces.length + " 塊。正在打亂順序...");
                 setShuffledPieces(pieces.sort(() => Math.random() - 0.5));
                 setPlacedPieces({});
-                setIsComplete(false);
-                console.log("遊戲狀態已重設。");
             }, [image]);
 
-            useEffect(() => {
-                const placedCount = Object.keys(placedPieces).length;
-                console.log(`--- useEffect 觸發：placedPieces 改變。目前已放置 ${placedCount} 塊 ---`);
-
-                if (placedCount > 0 && placedCount === PUZZLE_DIMENSION * PUZZLE_DIMENSION) {
-                    console.log("!!! 遊戲完成條件已達成 !!!");
-                    setIsComplete(true);
-                }
-            }, [placedPieces]);
+            // --- 已移除：檢查完成嘅 useEffect ---
 
             const handleDragStart = (piece) => {
-                console.log(`--- DragStart 事件：開始拖曳 ID 為 ${piece.id} 的拼圖 ---`);
                 draggedPieceRef.current = piece;
             };
 
@@ -120,17 +111,10 @@
             };
 
             const handleDrop = (slotId) => {
-                console.log(`--- Drop 事件：拼圖被放置到 ID 為 ${slotId} 的位置上 ---`);
-                console.log("被拖曳嘅拼圖 ID:", draggedPieceRef.current ? draggedPieceRef.current.id : 'null');
-                
                 if (draggedPieceRef.current && draggedPieceRef.current.id === slotId) {
-                    console.log("判斷正確！準備更新遊戲狀態...");
                     setPlacedPieces(prev => ({ ...prev, [slotId]: draggedPieceRef.current }));
                     setShuffledPieces(prev => prev.filter(p => p.id !== draggedPieceRef.current.id));
                     draggedPieceRef.current = null;
-                    console.log("遊戲狀態已更新。React 將會重新渲染。");
-                } else {
-                    console.log("判斷錯誤：拼圖 ID 與位置 ID 不符。");
                 }
             };
 
@@ -138,9 +122,10 @@
                 <div className="w-full min-h-screen flex flex-col items-center justify-center p-4">
                     <h2 className="text-3xl font-bold mb-4">拼砌: {image.name}</h2>
                     <div className="flex flex-col md:flex-row items-center gap-8">
+                        {/* 左側：未放置的碎片 */}
                         <div className="bg-gray-900 p-4 rounded-lg w-full md:w-auto">
                             <h3 className="text-xl mb-4 text-center">待拼碎片</h3>
-                            <div className="grid grid-cols-2 gap-2" style={{ minHeight: PIECE_SIZE * 2 + 8 }}>
+                            <div className="grid grid-cols-2 gap-2" style={{ minHeight: PIECE_SIZE + 8 }}>
                                 {shuffledPieces.map(piece => (
                                     <div
                                         key={piece.id}
@@ -153,9 +138,10 @@
                             </div>
                         </div>
 
-                        <div className="relative" style={{ width: BOARD_SIZE, height: BOARD_SIZE }}>
-                            <div className="grid grid-cols-2">
-                                {Array.from({ length: PUZZLE_DIMENSION * PUZZLE_DIMENSION }).map((_, i) => (
+                        {/* 右側：拼圖板 */}
+                        <div className="relative" style={{ width: BOARD_WIDTH, height: BOARD_HEIGHT }}>
+                            <div className={`grid grid-cols-${PUZZLE_COLS}`}>
+                                {Array.from({ length: PUZZLE_ROWS * PUZZLE_COLS }).map((_, i) => (
                                     <div
                                         key={i}
                                         onDragOver={handleDragOver}
@@ -172,12 +158,7 @@
                                     </div>
                                 ))}
                             </div>
-                            {isComplete && (
-                                <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center">
-                                    <h3 className="text-4xl text-yellow-300 font-bold">恭喜！</h3>
-                                    <p className="text-2xl mt-2">你完成了！</p>
-                                </div>
-                            )}
+                            {/* --- 已移除：完成時嘅覆蓋層 --- */}
                         </div>
                     </div>
                     <button onClick={onBack} className="mt-8 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg text-xl">
@@ -188,7 +169,6 @@
         };
 
         const App = () => {
-            console.log("正在渲染：主程式 (App)");
             const [currentScreen, setCurrentScreen] = useState('select');
             const [selectedImage, setSelectedImage] = useState(null);
 
