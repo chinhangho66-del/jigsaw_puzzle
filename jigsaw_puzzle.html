@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>圖片拼圖遊戲</title>
+    <title>圖片拼圖遊戲 (已修正)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -38,9 +38,9 @@
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // --- 圖片列表：請確保檔名與您上傳到 GitHub 的檔案一致 ---
+        // --- 圖片列表 ---
         const IMAGE_LIST = [
             { id: 'disney', name: '迪士尼樂園', src: './ultimate-guide-to-hong-kong-disneyland-1920x1080.jpg' },
             { id: 'library', name: '中央圖書館', src: './c73f0f962b95ede35ff142a3ba93e629.jpg' },
@@ -95,9 +95,11 @@
                 setIsComplete(false);
             }, [image]);
 
-            // 檢查是否完成
+            // --- 檢查是否完成 (已修正) ---
             useEffect(() => {
-                if (Object.keys(placedPieces).length === PUZZLE_DIMENSION * PUZZLE_DIMENSION) {
+                const placedCount = Object.keys(placedPieces).length;
+                // 確保已放置嘅拼圖數量大於 0，並且等於總數量 (4)，才算完成
+                if (placedCount > 0 && placedCount === PUZZLE_DIMENSION * PUZZLE_DIMENSION) {
                     setIsComplete(true);
                 }
             }, [placedPieces]);
